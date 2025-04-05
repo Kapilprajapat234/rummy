@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviator Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #191a3e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            padding: 20px;
+            background-image: linear-gradient(135deg, #191a3e 0%, #0c0e2b 100%);
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(22, 33, 62, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .balance {
+            font-size: 1.5rem;
+            padding: 10px 15px;
+            background-color: #16213e;
+            border-radius: 8px;
+            border: 1px solid #2a3b5f;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .game-area {
+            position: relative;
+            height: 400px;
+            background-color: #0f3460;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.4);
+            border: 2px solid #1b4579;
+        }
+        
+        .sky {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at bottom left, #164283, #0a1b38);
+            overflow: hidden;
+        }
+        
+        .cloud {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            filter: blur(10px);
+        }
+        
+        .airplane {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 10;
+            transform-origin: center;
+            transform: rotate(45deg);
+            transition: transform 0.2s ease;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.7));
+        }
+        
+        .airplane-icon {
+            position: relative;
+            width: 60px;
+            height: 40px;
+        }
+        
+        .airplane-body {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .airplane-image {
+            width: 44px;
+            height: 44px;
+            background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M21,16V14L13,9V3.5A1.5,1.5,0,0,0,11.5,2h0A1.5,1.5,0,0,0,10,3.5V9L2,14v2l8-2.5V19L8,20.5V22l3.5-1L15,22V20.5L13,19V13.5Z'/%3E%3C/svg%3E");
+            background-size: cover;
+        }
+        
+        .airplane-trail {
+            position: absolute;
+            bottom: 15px;
+            left: -25px;
+            width: 35px;
+            height: 8px;
+            background: linear-gradient(to left, rgba(255, 100, 100, 0.9), rgba(255, 0, 0, 0));
+            border-radius: 4px;
+            filter: blur(2px);
+        }
+        
+        .multiplier {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4.5rem;
+            font-weight: bold;
+            color: #f8485e;
+            z-index: 5;
+            opacity: 0.9;
+            text-shadow: 0 0 15px rgba(233, 69, 96, 0.8), 0 0 30px rgba(233, 69, 96, 0.4);
+        }
+        
+        .crashed {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: bold;
+            color: #f8485e;
+            z-index: 5;
+            display: none;
+            text-shadow: 0 0 15px rgba(233, 69, 96, 0.8);
+        }
+        
+        .timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #fff;
+            background-color: rgba(22, 33, 62, 0.7);
+            padding: 5px 15px;
+            border-radius: 10px;
+            display: none;
+            z-index: 10;
+        }
+        
+        .path-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        .path {
+            position: absolute;
+            height: 3px;
+            background-color: rgba(255, 60, 60, 0.7);
+            transform-origin: left center;
+            z-index: 1;
+            border-radius: 3px;
+            box-shadow: 0 0 10px rgba(255, 60, 60, 0.5);
+        }
+        
+        .explosion {
+            position: absolute;
+            z-index: 15;
+            animation: explode 0.8s forwards;
+            display: none;
+            filter: drop-shadow(0 0 20px rgba(255, 128, 0, 0.8));
+            width: 80px;
+            height: 80px;
+            background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ff6600'/%3E%3Ccircle cx='50' cy='50' r='30' fill='%23ffcc00'/%3E%3Ccircle cx='50' cy='50' r='20' fill='%23ffffff'/%3E%3C/svg%3E");
+            background-size: cover;
+        }
+        
+        @keyframes explode {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        
+        .betting-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: rgba(22, 33, 62, 0.7);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid #2a3b5f;
+        }
+        
+        .bet-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        input {
+            padding: 12px 15px;
+            border: 1px solid #2a3b5f;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            background-color: #0f3460;
+            color: white;
+            flex: 1;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        
+        input:focus {
+            border-color: #3a5b8f;
+            box-shadow: 0 0 0 2px rgba(58, 91, 143, 0.3), inset 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .bet-btn {
+            background-color: #e94560;
+            color: white;
+            flex: 1;
+            background-image: linear-gradient(135deg, #e94560 0%, #c91c3e 100%);
+        }
+        
+        .bet-btn:hover:not(:disabled) {
+            background-image: linear-gradient(135deg, #f04d68 0%, #d62246 100%);
+        }
+        
+        .cashout-btn {
+            background-color: #4CAF50;
+            color: white;
+            flex: 1;
+            background-image: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+        }
+        
+        .cashout-btn:hover:not(:disabled) {
+            background-image: linear-gradient(135deg, #5CBF60 0%, #429846 100%);
+        }
+        
+        .history {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .history h3 {
+            width: 100%;
+            margin-bottom: 5px;
+            color: #aac;
+        }
+        
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .history-item {
+            padding: 8px 12px;
+            background-color: #0f3460;
+            border-radius: 15px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .win {
+            color: #5CBF60;
+            background-image: linear-gradient(135deg, rgba(76, 175, 80, 0.2) 0%, rgba(56, 142, 60, 0.2) 100%);
+        }
+        
+        .lose {
+            color: #f04d68;
+            background-image: linear-gradient(135deg, rgba(233, 69, 96, 0.2) 0%, rgba(201, 28, 62, 0.2) 100%);
+        }
+
+        .game-status {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-top: -10px;
+            margin-bottom: 10px;
+            color: #aac;
+            font-weight: bold;
+            padding: 8px;
+            background-color: rgba(22, 33, 62, 0.5);
+            border-radius: 8px;
+        }
+        
+        .betting-time {
+            background-color: #2a594d;
+            padding: 8px 15px;
+            border-radius: 8px;
+            text-align: center;
+            color: #9dffd9;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="game-header">
+            <h1>Aviator Game</h1>
+            <div class="balance">Balance: ₹<span id="balance">1000</span></div>
+        </div>
+        
+        <div class="betting-time" id="betting-time">BETTING TIME: <span id="betting-timer">10</span>s</div>
+        <div class="game-status" id="game-status">Waiting for next flight...</div>
+        
+        <div class="game-area">
+            <div class="sky" id="sky"></div>
+            <div class="path-container" id="path-container"></div>
+            <div class="airplane">
+                <div class="airplane-icon">
+                    <div class="airplane-body">
+                        <div class="airplane-image"></div>
+                    </div>
+                    <div class="airplane-trail"></div>
+                </div>
+            </div>
+            <div class="explosion"></div>
+            <div class="multiplier">1.00x</div>
+            <div class="crashed">CRASHED!</div>
+            <div class="timer" id="timer">10</div>
+        </div>
+        
+        <div class="betting-panel">
+            <div class="bet-controls">
+                <input type="number" id="bet-amount" placeholder="Bet amount" min="10" max="1000">
+                <button class="bet-btn" id="bet-btn">Place Bet</button>
+                <button class="cashout-btn" id="cashout-btn" disabled>Cash Out</button>
+            </div>
+            
+            <div class="history">
+                <h3>Recent Multipliers:</h3>
+                <div id="history-list" class="history-list"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Game variables
+        let balance = 1000;
+        let currentBet = 0;
+        let isGameRunning = false;
+        let isBetting = false;
+        let currentMultiplier = 1.0;
+        let gameInterval;
+        let crashPoint;
+        let history = [];
+        let pathPoints = [];
+        let lastPathX = 0;
+        let lastPathY = 0;
+        let isBettingTime = false;
+        let bettingTimeValue = 10;
+        let bettingTimeInterval;
+        let clouds = [];
+        let planeSpeed = 0.15; // Reduced plane speed
+        
+        // DOM elements
+        const balanceEl = document.getElementById('balance');
+        const multiplierEl = document.querySelector('.multiplier');
+        const crashedEl = document.querySelector('.crashed');
+        const airplaneEl = document.querySelector('.airplane');
+        const explosionEl = document.querySelector('.explosion');
+        const betAmountEl = document.getElementById('bet-amount');
+        const betBtn = document.getElementById('bet-btn');
+        const cashoutBtn = document.getElementById('cashout-btn');
+        const historyListEl = document.getElementById('history-list');
+        const gameAreaEl = document.querySelector('.game-area');
+        const pathContainerEl = document.getElementById('path-container');
+        const timerEl = document.getElementById('timer');
+        const skyEl = document.getElementById('sky');
+        const gameStatusEl = document.getElementById('game-status');
+        const bettingTimeEl = document.getElementById('betting-time');
+        const bettingTimerEl = document.getElementById('betting-timer');
+        
+        // Initialize game
+        function init() {
+            updateBalance();
+            loadHistory();
+            createClouds();
+            
+            betBtn.addEventListener('click', placeBet);
+            cashoutBtn.addEventListener('click', cashout);
+            
+            // Start with betting time
+            startBettingTime();
+        }
+        
+        // Create decorative clouds
+        function createClouds() {
+            for (let i = 0; i < 10; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                
+                const size = Math.random() * 100 + 50;
+                const opacity = Math.random() * 0.1 + 0.05;
+                
+                cloud.style.width = size + 'px';
+                cloud.style.height = size + 'px';
+                cloud.style.left = Math.random() * 100 + '%';
+                cloud.style.top = Math.random() * 100 + '%';
+                cloud.style.opacity = opacity;
+                
+                skyEl.appendChild(cloud);
+                clouds.push(cloud);
+            }
+        }
+        
+        // Animate clouds
+        function animateClouds() {
+            clouds.forEach(cloud => {
+                const speed = 0.05;
+                let left = parseFloat(cloud.style.left);
+                left -= speed;
+                if (left < -20) left = 120;
+                cloud.style.left = left + '%';
+            });
+            
+            if (isGameRunning) {
+                requestAnimationFrame(animateClouds);
+            }
+        }
+        
+        // Update balance display
+        function updateBalance() {
+            balanceEl.textContent = balance.toFixed(0);
+        }
+        
+        // Start betting time countdown
+        function startBettingTime() {
+            // Reset game state
+            resetGameElements();
+            
+            // Start betting time
+            isBettingTime = true;
+            isGameRunning = false;
+            bettingTimeValue = 10;
+            
+            // Update UI
+            bettingTimeEl.style.display = 'block';
+            bettingTimerEl.textContent = bettingTimeValue;
+            gameStatusEl.textContent = "Place your bets! Flight departing soon...";
+            
+            // Reset controls
+            betBtn.disabled = false;
+            betAmountEl.disabled = false;
+            cashoutBtn.disabled = true;
+            
+            // Clear any existing interval
+            if (bettingTimeInterval) {
+                clearInterval(bettingTimeInterval);
+            }
+            
+            // Start countdown
+            bettingTimeInterval = setInterval(() => {
+                bettingTimeValue--;
+                bettingTimerEl.textContent = bettingTimeValue;
+                
+                if (bettingTimeValue <= 0) {
+                    clearInterval(bettingTimeInterval);
+                    isBettingTime = false;
+                    bettingTimeEl.style.display = 'none';
+                    
+                    // Start the game
+                    startGame();
+                }
+            }, 1000);
+        }
+        
+        // Reset game elements
+        function resetGameElements() {
+            // Clear paths
+            clearPaths();
+            
+            // Reset UI elements
+            multiplierEl.textContent = "1.00x";
+            multiplierEl.style.display = 'block';
+            crashedEl.style.display = 'none';
+            explosionEl.style.display = 'none';
+            
+            // Reset airplane position
+            const gameHeight = gameAreaEl.clientHeight;
+            airplaneEl.style.bottom = '20px';
+            airplaneEl.style.left = '20px';
+            airplaneEl.style.transform = 'rotate(45deg)';
+            airplaneEl.style.display = 'block';
+            
+            lastPathX = 20;
+            lastPathY = gameHeight - 20;
+        }
+        
+        // Place a bet
+        function placeBet() {
+            // Can only bet during betting time
+            if (!isBettingTime) {
+                gameStatusEl.textContent = "Can't place bet while airplane is flying!";
+                return;
+            }
+            
+            const betAmount = parseInt(betAmountEl.value);
+            
+            if (isNaN(betAmount) || betAmount < 10 || betAmount > balance) {
+                alert('Please enter a valid bet amount between ₹10 and ₹' + balance);
+                return;
+            }
+            
+            // Deduct bet from balance
+            balance -= betAmount;
+            currentBet = betAmount;
+            updateBalance();
+            
+            // Update UI
+            betAmountEl.disabled = true;
+            cashoutBtn.disabled = true; // Will be enabled when plane starts flying
+            isBetting = true;
+            gameStatusEl.textContent = "Bet placed! Wait for takeoff...";
+        }
+        
+        // Clear all paths
+        function clearPaths() {
+            pathContainerEl.innerHTML = '';
+            pathPoints = [];
+        }
+        
+        // Start the game
+        function startGame() {
+            isGameRunning = true;
+            currentMultiplier = 1.0;
+            
+            // Betting is closed while plane is flying
+            betBtn.disabled = true;
+            betAmountEl.disabled = true;
+            
+            // Enable cashout button if player has placed a bet
+            if (isBetting) {
+                cashoutBtn.disabled = false;
+            }
+            
+            // MODIFIED CRASH POINT CALCULATION
+            const randomVal = Math.random() * 100; // 0-100 for percentages
+            
+            // 10% chance to crash very early (1.00-1.10x)
+            if (randomVal < 10) {
+                crashPoint = 1.00 + Math.random() * 0.10;
+            }
+            // 30% chance to crash between 1.10-2.00x
+            else if (randomVal < 40) {
+                crashPoint = 1.10 + Math.random() * 0.90;
+            }
+            // 40% chance to crash between 2.00-4.00x
+            else if (randomVal < 80) {
+                crashPoint = 2.00 + Math.random() * 2.00;
+            }
+            // 15% chance to crash between 4.00-8.00x
+            else if (randomVal < 95) {
+                crashPoint = 4.00 + Math.random() * 4.00;
+            }
+            // 5% chance for big multipliers (8.00-20.00x)
+            else {
+                crashPoint = 8.00 + Math.random() * 12.00;
+            }
+            
+            // Update UI
+            gameStatusEl.textContent = "Airplane taking off! Watch carefully!";
+            
+            // Start cloud animation
+            animateClouds();
+            
+            // Start the game loop
+            let lastTimestamp = 0;
+            let lastPathTime = 0;
+            
+            gameInterval = requestAnimationFrame(function update(timestamp) {
+                if (!lastTimestamp) lastTimestamp = timestamp;
+                const deltaTime = (timestamp - lastTimestamp) / 1000;
+                lastTimestamp = timestamp;
+                
+                // Update multiplier (increasing slower as requested)
+                const multiplierIncrease = planeSpeed * deltaTime * Math.pow(currentMultiplier, 0.7);
+                currentMultiplier += multiplierIncrease;
+                multiplierEl.textContent = currentMultiplier.toFixed(2) + 'x';
+                
+                // Calculate airplane position with curved path from bottom-left to top-right
+                const gameHeight = gameAreaEl.clientHeight;
+                const gameWidth = gameAreaEl.clientWidth;
+                
+                // Use a different progress calculation to ensure crash happens during upward movement
+                let progress = (currentMultiplier - 1) / 9; // Normalize to 0-1 range for most crashes
+                if (progress > 1) progress = 1;
+                
+                // Create a steeper upward path
+                const x = 20 + progress * (gameWidth * 0.8);
+                const y = progress * (gameHeight - 40);
+                
+                // Update airplane position
+                airplaneEl.style.left = x + 'px';
+                airplaneEl.style.bottom = y + 'px';
+                
+                // Draw path
+                if (timestamp - lastPathTime > 20) { // Draw path points more frequently
+                    drawPath(x + 22, gameHeight - y - 20); // Adjust for airplane center
+                    lastPathTime = timestamp;
+                }
+                
+                // Check if game should end
+                if (currentMultiplier >= crashPoint) {
+                    gameOver(x, y);
+                    return;
+                }
+                
+                gameInterval = requestAnimationFrame(update);
+            });
+        }
+        
+        // Draw path between points
+        function drawPath(x, y) {
+            // If we have a previous point, draw a line
+            if (pathPoints.length > 0) {
+                const lastPoint = pathPoints[pathPoints.length - 1];
+                const dx = x - lastPoint.x;
+                const dy = y - lastPoint.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+                
+                const path = document.createElement('div');
+                path.className = 'path';
+                path.style.left = lastPoint.x + 'px';
+                path.style.top = lastPoint.y + 'px';
+                path.style.width = distance + 'px';
+                path.style.transform = `rotate(${angle}rad)`;
+                
+                pathContainerEl.appendChild(path);
+                
+                // Fade out the path gradually
+                setTimeout(() => {
+                    path.style.opacity = '0.3';
+                    setTimeout(() => {
+                        path.style.opacity = '0.1';
+                    }, 1000);
+                }, 1000);
+            }
+            
+            // Save current point
+            pathPoints.push({ x, y });
+            
+            // Store last path coordinates
+            lastPathX = x;
+            lastPathY = y;
+        }
+        
+        // Cash out
+        function cashout() {
+            if (!isBetting || !isGameRunning) return;
+            
+            // Calculate winnings
+            const winnings = Math.floor(currentBet * currentMultiplier);
+            balance += winnings;
+            
+            // Update UI
+            updateBalance();
+            isBetting = false;
+            cashoutBtn.disabled = true;
+            gameStatusEl.textContent = `Cashed out at ${currentMultiplier.toFixed(2)}x with ₹${winnings - currentBet} profit!`;
+            
+            // Show success message
+            alert(`Success! You cashed out at ${currentMultiplier.toFixed(2)}x and won ₹${winnings - currentBet} profit!`);
+            
+            addToHistory(currentMultiplier, true);
+        }
+        
+        // Game over with explosion at current position
+        function gameOver(x, y) {
+            isGameRunning = false;
+            
+            // Cancel any existing animation frame
+            if (gameInterval) {
+                cancelAnimationFrame(gameInterval);
+                gameInterval = null;
+            }
+            
+            // Update UI
+            multiplierEl.style.display = 'none';
+            crashedEl.style.display = 'block';
+            gameStatusEl.textContent = `Crashed at ${crashPoint.toFixed(2)}x! Get ready for next round...`;
+            
+            // Add flight to history, even if not betting
+            addToHistory(crashPoint, false);
+            
+            // Show bet loss message if player was betting
+            if (isBetting) {
+                isBetting = false;
+                gameStatusEl.textContent = `You lost ₹${currentBet}! Crashed at ${crashPoint.toFixed(2)}x!`;
+            }
+            
+            // Show explosion at current position
+            explosionEl.style.left = (x - 40) + 'px';
+            explosionEl.style.bottom = (y - 40) + 'px';
+            explosionEl.style.display = 'block';
+            
+            // Hide airplane
+            airplaneEl.style.display = 'none';
+            
+            // After explosion animation, start betting time
+            setTimeout(() => {
+                startBettingTime();
+            }, 3000);
+        }
+        
+        // Add to history
+        function addToHistory(multiplier, success) {
+            history.unshift({
+                multiplier: multiplier,
+                success: success
+            });
+            
+            // Keep history limited to 10 items
+            if (history.length > 10) {
+                history.pop();
+            }
+            
+            updateHistoryUI();
+        }
+        
+        // Update history UI
+        function updateHistoryUI() {
+            historyListEl.innerHTML = '';
+            
+            history.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item ' + (item.success ? 'win' : 'lose');
+                historyItem.textContent = item.multiplier.toFixed(2) + 'x';
+                historyListEl.appendChild(historyItem);
+            });
+        }
+        
+        // Load saved history - add some initial history items
+        function loadHistory() {
+            // Add some sample history items for first load
+            if (history.length === 0) {
+                history = [
+                    { multiplier: 1.88, success: false },
+                    { multiplier: 4.35, success: false },
+                    { multiplier: 1.05, success: false },
+                    { multiplier: 2.22, success: false },
+                    { multiplier: 7.13, success: false }
+                ];
+            }
+            updateHistoryUI();
+        }
+        
+        // Initialize the game
+        init();
+    </script>
+</body>
+</html>
