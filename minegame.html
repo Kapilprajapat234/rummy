@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mine Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #121212;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #00e676;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-shadow: 0 0 10px rgba(0, 230, 118, 0.5);
+        }
+        
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .cell {
+            aspect-ratio: 1/1;
+            background-color: #2c2c2c;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 2px solid #3a3a3a;
+        }
+        
+        .cell:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            background-color: #333333;
+        }
+        
+        .cell.revealed-gem {
+            background-color: #00c853;
+            animation: pulse 1s infinite;
+        }
+        
+        .cell.revealed-mine {
+            background-color: #f44336;
+            animation: shake 0.5s;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 200, 83, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(0, 200, 83, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 200, 83, 0);
+            }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        .controls {
+            background-color: #242424;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .bet-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .bet-label {
+            font-weight: bold;
+            color: #bbbbbb;
+        }
+        
+        input {
+            background-color: #333333;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            padding: 8px;
+            width: 100px;
+            text-align: center;
+        }
+        
+        input:focus {
+            outline: 2px solid #00e676;
+        }
+        
+        .mines-input {
+            width: 60px;
+        }
+        
+        .button-container {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            background-color: #00c853;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            flex: 1;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background-color: #00e676;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        button:disabled {
+            background-color: #555555;
+            cursor: not-allowed;
+        }
+        
+        #cash-out {
+            background-color: #ff9800;
+        }
+        
+        #cash-out:hover {
+            background-color: #ffb74d;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+            padding: 10px;
+            background-color: #242424;
+            border-radius: 8px;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00e676;
+        }
+        
+        #multiplier .stat-value {
+            color: #ffb74d;
+        }
+        
+        #potential-win .stat-value {
+            color: #29b6f6;
+        }
+        
+        .message {
+            text-align: center;
+            margin-top: 10px;
+            min-height: 24px;
+            color: #ffab00;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mine Game</h1>
+        
+        <div class="stats">
+            <div class="stat">
+                <div>Balance</div>
+                <div id="balance" class="stat-value">1000</div>
+            </div>
+            <div class="stat">
+                <div>Multiplier</div>
+                <div id="multiplier" class="stat-value">1.00x</div>
+            </div>
+            <div class="stat">
+                <div>Potential Win</div>
+                <div id="potential-win" class="stat-value">0</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="bet-container">
+                <span class="bet-label">Bet Amount:</span>
+                <input type="number" id="bet-amount" min="1" value="10">
+            </div>
+            <div class="bet-container">
+                <span class="bet-label">Number of Mines:</span>
+                <input type="number" id="mine-count" class="mines-input" min="1" max="8" value="3">
+            </div>
+            <div class="button-container">
+                <button id="start-game">Start Game</button>
+                <button id="cash-out" disabled>Cash Out</button>
+            </div>
+        </div>
+        
+        <div class="game-grid" id="game-grid">
+            <div class="cell" data-index="0"></div>
+            <div class="cell" data-index="1"></div>
+            <div class="cell" data-index="2"></div>
+            <div class="cell" data-index="3"></div>
+            <div class="cell" data-index="4"></div>
+            <div class="cell" data-index="5"></div>
+            <div class="cell" data-index="6"></div>
+            <div class="cell" data-index="7"></div>
+            <div class="cell" data-index="8"></div>
+        </div>
+        
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game elements
+            const gameGrid = document.getElementById('game-grid');
+            const cells = document.querySelectorAll('.cell');
+            const startGameBtn = document.getElementById('start-game');
+            const cashOutBtn = document.getElementById('cash-out');
+            const betAmountInput = document.getElementById('bet-amount');
+            const mineCountInput = document.getElementById('mine-count');
+            const balanceDisplay = document.getElementById('balance');
+            const multiplierDisplay = document.getElementById('multiplier');
+            const potentialWinDisplay = document.getElementById('potential-win');
+            const messageDisplay = document.getElementById('message');
+            
+            // Game state
+            let gameActive = false;
+            let mines = [];
+            let revealedCells = [];
+            let balance = 1000;
+            let currentBet = 0;
+            let mineCount = 3;
+            
+            // Initialize the game
+            updateBalance(balance);
+            
+            // Event listeners
+            startGameBtn.addEventListener('click', startGame);
+            cashOutBtn.addEventListener('click', cashOut);
+            
+            cells.forEach(cell => {
+                cell.addEventListener('click', () => {
+                    if (!gameActive) return;
+                    
+                    const index = parseInt(cell.dataset.index);
+                    revealCell(index);
+                });
+            });
+            
+            // Game functions
+            
+            // This function starts a new game
+            function startGame() {
+                const betAmount = parseInt(betAmountInput.value);
+                mineCount = parseInt(mineCountInput.value);
+                
+                // Validate inputs
+                if (isNaN(betAmount) || betAmount <= 0) {
+                    messageDisplay.textContent = "Please enter a valid bet amount";
+                    return;
+                }
+                
+                if (isNaN(mineCount) || mineCount < 1 || mineCount > 8) {
+                    messageDisplay.textContent = "Mine count must be between 1 and 8";
+                    return;
+                }
+                
+                if (betAmount > balance) {
+                    messageDisplay.textContent = "Not enough balance for this bet";
+                    return;
+                }
+                
+                // Deduct bet from balance
+                updateBalance(balance - betAmount);
+                currentBet = betAmount;
+                
+                // Reset game state
+                gameActive = true;
+                revealedCells = [];
+                resetGrid();
+                
+                // Place mines randomly
+                placeMines();
+                
+                // Update UI
+                startGameBtn.disabled = true;
+                cashOutBtn.disabled = false;
+                messageDisplay.textContent = "Game started! Avoid the mines.";
+                updateMultiplier();
+            }
+            
+            // This function places mines randomly on the grid
+            function placeMines() {
+                mines = [];
+                while (mines.length < mineCount) {
+                    const randomPosition = Math.floor(Math.random() * 9);
+                    if (!mines.includes(randomPosition)) {
+                        mines.push(randomPosition);
+                    }
+                }
+                console.log("Mines placed at:", mines); // For debugging
+            }
+            
+            // This function reveals a cell when clicked
+            function revealCell(index) {
+                if (revealedCells.includes(index)) return;
+                
+                const cell = document.querySelector(`.cell[data-index="${index}"]`);
+                
+                // Check if clicked on a mine
+                if (mines.includes(index)) {
+                    // Game over
+                    gameActive = false;
+                    cell.classList.add('revealed-mine');
+                    cell.innerHTML = '💣';
+                    
+                    // Reveal all mines
+                    mines.forEach(mineIndex => {
+                        const mineCell = document.querySelector(`.cell[data-index="${mineIndex}"]`);
+                        mineCell.classList.add('revealed-mine');
+                        mineCell.innerHTML = '💣';
+                    });
+                    
+                    cashOutBtn.disabled = true;
+                    startGameBtn.disabled = false;
+                    messageDisplay.textContent = "Game Over! You hit a mine.";
+                } else {
+                    // Reveal gem
+                    cell.classList.add('revealed-gem');
+                    cell.innerHTML = '💎';
+                    revealedCells.push(index);
+                    
+                    // Update multiplier
+                    updateMultiplier();
+                    
+                    // Check if all non-mine cells have been revealed
+                    if (revealedCells.length === 9 - mineCount) {
+                        // Max win
+                        cashOut();
+                        messageDisplay.textContent = "Congratulations! You found all gems!";
+                    }
+                }
+            }
+            
+            // This function calculates and updates the multiplier
+            function updateMultiplier() {
+                if (revealedCells.length === 0) {
+                    multiplierDisplay.textContent = "1.00x";
+                    potentialWinDisplay.textContent = currentBet;
+                    return;
+                }
+                
+                // Calculate multiplier based on revealed cells and mine count
+                // Formula: 0.95 * (9 / (9 - mines)) ^ revealed
+                const baseFactor = 9 / (9 - mineCount);
+                const multiplier = 0.95 * Math.pow(baseFactor, revealedCells.length);
+                const roundedMultiplier = Math.round(multiplier * 100) / 100;
+                
+                multiplierDisplay.textContent = roundedMultiplier.toFixed(2) + "x";
+                
+                // Calculate potential win
+                const potentialWin = Math.floor(currentBet * roundedMultiplier);
+                potentialWinDisplay.textContent = potentialWin;
+            }
+            
+            // This function handles cashing out
+            function cashOut() {
+                if (!gameActive) return;
+                
+                gameActive = false;
+                
+                // Calculate winnings
+                const multiplier = parseFloat(multiplierDisplay.textContent);
+                const winnings = Math.floor(currentBet * multiplier);
+                
+                // Update balance
+                updateBalance(balance + winnings);
+                
+                // Update UI
+                cashOutBtn.disabled = true;
+                startGameBtn.disabled = false;
+                messageDisplay.textContent = `Cashed out with ${multiplier}x multiplier! Won ${winnings}.`;
+                
+                // Reveal all mines
+                mines.forEach(mineIndex => {
+                    const mineCell = document.querySelector(`.cell[data-index="${mineIndex}"]`);
+                    mineCell.classList.add('revealed-mine');
+                    mineCell.innerHTML = '💣';
+                });
+            }
+            
+            // This function updates the balance display
+            function updateBalance(newBalance) {
+                balance = newBalance;
+                balanceDisplay.textContent = balance;
+            }
+            
+            // This function resets the grid for a new game
+            function resetGrid() {
+                cells.forEach(cell => {
+                    cell.classList.remove('revealed-gem', 'revealed-mine');
+                    cell.innerHTML = '';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
