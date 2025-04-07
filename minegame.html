@@ -258,7 +258,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Game elements
+            // DOM Elements
             const gameGrid = document.getElementById('game-grid');
             const cells = document.querySelectorAll('.cell');
             const startGameBtn = document.getElementById('start-game');
@@ -270,11 +270,12 @@
             const potentialWinDisplay = document.getElementById('potential-win');
             const messageDisplay = document.getElementById('message');
             
-            // Game state
+            // Game state variables
             let gameActive = false;
             let mines = [];
             let revealedCells = [];
-            let balance = 1000;
+            // Load balance from localStorage or default to 1000
+            let balance = parseFloat(localStorage.getItem("userBalance")) || 1000;
             let currentBet = 0;
             let mineCount = 3;
             
@@ -288,15 +289,19 @@
             cells.forEach(cell => {
                 cell.addEventListener('click', () => {
                     if (!gameActive) return;
-                    
                     const index = parseInt(cell.dataset.index);
                     revealCell(index);
                 });
             });
             
-            // Game functions
+            // Function to update balance display and save to localStorage
+            function updateBalance(newBalance) {
+                balance = newBalance;
+                balanceDisplay.textContent = balance;
+                localStorage.setItem("userBalance", balance);
+            }
             
-            // This function starts a new game
+            // Start a new game
             function startGame() {
                 const betAmount = parseInt(betAmountInput.value);
                 mineCount = parseInt(mineCountInput.value);
@@ -306,12 +311,10 @@
                     messageDisplay.textContent = "Please enter a valid bet amount";
                     return;
                 }
-                
                 if (isNaN(mineCount) || mineCount < 1 || mineCount > 8) {
                     messageDisplay.textContent = "Mine count must be between 1 and 8";
                     return;
                 }
-                
                 if (betAmount > balance) {
                     messageDisplay.textContent = "Not enough balance for this bet";
                     return;
@@ -329,14 +332,14 @@
                 // Place mines randomly
                 placeMines();
                 
-                // Update UI
+                // Update UI controls
                 startGameBtn.disabled = true;
                 cashOutBtn.disabled = false;
                 messageDisplay.textContent = "Game started! Avoid the mines.";
                 updateMultiplier();
             }
             
-            // This function places mines randomly on the grid
+            // Place mines on the grid randomly
             function placeMines() {
                 mines = [];
                 while (mines.length < mineCount) {
@@ -345,90 +348,66 @@
                         mines.push(randomPosition);
                     }
                 }
-                console.log("Mines placed at:", mines); // For debugging
+                console.log("Mines placed at:", mines);
             }
             
-            // This function reveals a cell when clicked
+            // Reveal a cell when clicked
             function revealCell(index) {
                 if (revealedCells.includes(index)) return;
-                
                 const cell = document.querySelector(`.cell[data-index="${index}"]`);
-                
-                // Check if clicked on a mine
                 if (mines.includes(index)) {
-                    // Game over
+                    // Game over scenario
                     gameActive = false;
                     cell.classList.add('revealed-mine');
                     cell.innerHTML = '💣';
-                    
-                    // Reveal all mines
                     mines.forEach(mineIndex => {
                         const mineCell = document.querySelector(`.cell[data-index="${mineIndex}"]`);
                         mineCell.classList.add('revealed-mine');
                         mineCell.innerHTML = '💣';
                     });
-                    
                     cashOutBtn.disabled = true;
                     startGameBtn.disabled = false;
                     messageDisplay.textContent = "Game Over! You hit a mine.";
                 } else {
-                    // Reveal gem
+                    // Reveal a gem and update multiplier
                     cell.classList.add('revealed-gem');
                     cell.innerHTML = '💎';
                     revealedCells.push(index);
-                    
-                    // Update multiplier
                     updateMultiplier();
-                    
-                    // Check if all non-mine cells have been revealed
+                    // Check win condition (all safe cells revealed)
                     if (revealedCells.length === 9 - mineCount) {
-                        // Max win
                         cashOut();
                         messageDisplay.textContent = "Congratulations! You found all gems!";
                     }
                 }
             }
             
-            // This function calculates and updates the multiplier
+            // Update multiplier and potential win
             function updateMultiplier() {
                 if (revealedCells.length === 0) {
                     multiplierDisplay.textContent = "1.00x";
                     potentialWinDisplay.textContent = currentBet;
                     return;
                 }
-                
-                // Calculate multiplier based on revealed cells and mine count
-                // Formula: 0.95 * (9 / (9 - mines)) ^ revealed
                 const baseFactor = 9 / (9 - mineCount);
                 const multiplier = 0.95 * Math.pow(baseFactor, revealedCells.length);
                 const roundedMultiplier = Math.round(multiplier * 100) / 100;
-                
                 multiplierDisplay.textContent = roundedMultiplier.toFixed(2) + "x";
-                
-                // Calculate potential win
                 const potentialWin = Math.floor(currentBet * roundedMultiplier);
                 potentialWinDisplay.textContent = potentialWin;
             }
             
-            // This function handles cashing out
+            // Cash out function: calculate winnings and update balance
             function cashOut() {
                 if (!gameActive) return;
-                
                 gameActive = false;
-                
-                // Calculate winnings
                 const multiplier = parseFloat(multiplierDisplay.textContent);
                 const winnings = Math.floor(currentBet * multiplier);
-                
-                // Update balance
                 updateBalance(balance + winnings);
-                
-                // Update UI
                 cashOutBtn.disabled = true;
                 startGameBtn.disabled = false;
-                messageDisplay.textContent = `Cashed out with ${multiplier}x multiplier! Won ${winnings}.`;
-                
-                // Reveal all mines
+                messageDisplay.textContent = `Cashed out with ${multiplier}x multiplier! Won ${winnings - currentBet}.`;
+                // Reveal all mines for clarity
                 mines.forEach(mineIndex => {
                     const mineCell = document.querySelector(`.cell[data-index="${mineIndex}"]`);
                     mineCell.classList.add('revealed-mine');
@@ -436,19 +415,16 @@
                 });
             }
             
-            // This function updates the balance display
-            function updateBalance(newBalance) {
-                balance = newBalance;
-                balanceDisplay.textContent = balance;
-            }
-            
-            // This function resets the grid for a new game
+            // Reset the grid for a new game
             function resetGrid() {
                 cells.forEach(cell => {
                     cell.classList.remove('revealed-gem', 'revealed-mine');
                     cell.innerHTML = '';
                 });
             }
+            
+            // Initialize game on page load
+            updateBalance(balance);
         });
     </script>
 </body>
