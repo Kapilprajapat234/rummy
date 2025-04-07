@@ -50,6 +50,7 @@
     .back-button:hover {
       transform: scale(1.2);
     }
+    /* This element is for the game page; the website header might use id="balanceDisplay" */
     #balance-box {
       background: #293147;
       text-align: center;
@@ -560,6 +561,55 @@
       to { transform: translateY(0); opacity: 1; }
     }
     
+    /* INFO MODALS (How to Play / Detail) */
+    .info-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1200;
+      animation: fadeIn 0.3s ease;
+    }
+    .info-container {
+      width: 90%;
+      max-width: 400px;
+      background: linear-gradient(135deg, #2980b9, #7644ff);
+      border-radius: 10px;
+      overflow: hidden;
+      color: #fff;
+    }
+    .info-header {
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .info-content {
+      background-color: #1a1f36;
+      padding: 20px;
+      text-align: left;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    .info-close-button {
+      background-color: #0caf69;
+      margin: 10px auto;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 5px;
+      transition: background-color 0.2s ease;
+      display: block;
+    }
+    .info-close-button:hover {
+      background-color: #13d47c;
+      transform: translateY(-2px);
+    }
+
     /* RESPONSIVE DESIGN */
     @media (max-width: 600px) {
       .number-grid {
@@ -608,6 +658,7 @@
       <div class="logo">color prediction</div>
       <div style="width: 24px;"></div>
     </header>
+    <!-- Note: This element is used on the game page -->
     <div id="balance-box">Balance: ₹1000.00</div>
 
     <!-- INFO BAR -->
@@ -759,27 +810,13 @@
       <div class="bet-content">
         <div class="bet-selection">
           <div>Bet on: <span id="bet-selection-text"></span></div>
-          <input
-            type="number"
-            class="bet-input"
-            id="bet-amount"
-            value="1.00"
-            min="1"
-            step="0.01"
-          />
+          <input type="number" class="bet-input" id="bet-amount" value="1.00" min="1" step="0.01" />
         </div>
         <div class="quantity-control">
           <div>Quantity</div>
           <div style="display: flex; align-items: center;">
             <button class="quantity-button" id="decrease-quantity">-</button>
-            <input
-              type="number"
-              class="bet-input"
-              id="quantity"
-              value="1"
-              min="1"
-              style="width: 60px; margin: 0 10px;"
-            />
+            <input type="number" class="bet-input" id="quantity" value="1" min="1" style="width: 60px; margin: 0 10px;" />
             <button class="quantity-button" id="increase-quantity">+</button>
           </div>
         </div>
@@ -800,15 +837,66 @@
     </div>
   </div>
 
+  <!-- HOW TO PLAY MODAL -->
+  <div class="info-modal" id="how-to-play-modal">
+    <div class="info-container">
+      <div class="info-header">How to Play</div>
+      <div class="info-content">
+        <p>
+          1. Select a color, number, or Big/Small option.<br>
+          2. Choose your bet amount and multiplier.<br>
+          3. Wait for the countdown to finish.<br>
+          4. If your prediction matches the outcome, you win!
+        </p>
+      </div>
+      <button class="info-close-button" id="how-to-play-close-button">Close</button>
+    </div>
+  </div>
+
+  <!-- DETAIL MODAL -->
+  <div class="info-modal" id="detail-modal-modal">
+    <div class="info-container">
+      <div class="info-header">Game Details</div>
+      <div class="info-content">
+        <p>
+          - Each round lasts 30s by default (you can switch to 1min, 3min, or 5min).<br>
+          - Number range: 0-9.<br>
+          - 0, 5 = Violet | 1, 3, 7, 9 = Red | 2, 4, 6, 8 = Green.<br>
+          - Big = 5-9, Small = 0-4.<br>
+          - Payouts vary depending on the bet type.
+        </p>
+      </div>
+      <button class="info-close-button" id="detail-close-button">Close</button>
+    </div>
+  </div>
+
   <!-- JAVASCRIPT -->
   <script>
+    // ====== BALANCE HANDLING ======
+    // Load balance from localStorage (if available) or default to ₹1000.00
+    let balance = parseFloat(localStorage.getItem("userBalance")) || 1000.00;
+
+    // Update both game and website balance displays (if present)
+    function updateBalanceDisplay() {
+      const gameBalanceElem = document.getElementById("balance-box");
+      const websiteBalanceElem = document.getElementById("balanceDisplay");
+      if(gameBalanceElem) {
+        gameBalanceElem.textContent = `Balance: ₹${balance.toFixed(2)}`;
+      }
+      if(websiteBalanceElem) {
+        websiteBalanceElem.textContent = `₹${balance.toFixed(2)}`;
+      }
+      localStorage.setItem("userBalance", balance.toFixed(2));
+    }
+    // Initial display update
+    updateBalanceDisplay();
+
     // ====== GLOBALS ======
     let roundDuration = 30; // default in seconds (30, 60, 180, 300)
     let countdown = roundDuration;
     let countdownInterval = null;
-    let balance = 1000.00;
     let currentBet = null; // { type, selection, amount, quantity, multiplier }
-    let currentBetType = null; // "number", "big", or "small"
+    let currentBetType = null; // "number", "big", "small", or "color"
     let selectedMultiplier = "x2";
     let currentPeriod = 170002434501;  // Starting period number
     let userBetHistory = []; // store bet records
@@ -828,16 +916,12 @@
     const chartCtx = chartCanvas.getContext("2d");
 
     // ====== HELPER FUNCTIONS ======
-    function updateBalanceDisplay() {
-      document.getElementById("balance-box").textContent = `Balance: ₹${balance.toFixed(2)}`;
-    }
     function formatTime(sec) {
       let m = Math.floor(sec / 60);
       let s = sec % 60;
       return `00:${m < 10 ? "0"+m : m}:${s < 10 ? "0"+s : s}`;
     }
     function getColorByNumber(num) {
-      // 0,5 => Violet; 1,3,7,9 => Red; 2,4,6,8 => Green
       if (num === 0 || num === 5) return "Violet";
       if ([1, 3, 7, 9].includes(num)) return "Red";
       return "Green";
@@ -866,11 +950,10 @@
         countdown--;
         document.getElementById("timer").textContent = formatTime(countdown);
 
-        // Show big digits for last 5 seconds
         if (countdown <= 5 && countdown > 0) {
           last5Content.textContent = countdown;
           showLast5Modal();
-          beepSound.currentTime = 0; // rewind beep
+          beepSound.currentTime = 0;
           beepSound.play().catch(e => {});
         } else if (countdown <= 0) {
           hideLast5Modal();
@@ -898,20 +981,17 @@
       let bigSmall = getBigSmall(randNum);
       let period = getPeriodString();
 
-      // Store for chart
       resultsForChart.unshift({ period, number: randNum });
       if (resultsForChart.length > 10) {
         resultsForChart.pop();
       }
 
-      // Add to game history
       addToHistory({
         period: period,
         number: randNum,
         bigSmall: bigSmall,
         color: color
       });
-      // Update chart
       drawChart();
 
       if (currentBet) {
@@ -923,7 +1003,6 @@
 
         if (currentBet.type === "number") {
           if (parseInt(currentBet.selection) === randNum) {
-            // 8.8x from older example
             winAmount = finalBetAmount * 8.8;
             balance += winAmount;
             resultMsg = `Congrats! You guessed ${currentBet.selection}, actual number is ${randNum}. You won ₹${winAmount.toFixed(2)}!`;
@@ -934,7 +1013,6 @@
           }
         } else if (currentBet.type === "big") {
           if (randNum >= 5) {
-            // 2x for big
             winAmount = finalBetAmount * 2;
             balance += winAmount;
             resultMsg = `Awesome! You bet on Big. Number is ${randNum}. You won ₹${winAmount.toFixed(2)}!`;
@@ -945,7 +1023,6 @@
           }
         } else if (currentBet.type === "small") {
           if (randNum <= 4) {
-            // 2x for small
             winAmount = finalBetAmount * 2;
             balance += winAmount;
             resultMsg = `Awesome! You bet on Small. Number is ${randNum}. You won ₹${winAmount.toFixed(2)}!`;
@@ -954,12 +1031,19 @@
             resultMsg = `Oh no! You bet on Small, but the number is ${randNum} (Big). You lost ₹${finalBetAmount.toFixed(2)}.`;
             outcome = "Loss";
           }
+        } else if (currentBet.type === "color") {
+          if (currentBet.selection.toLowerCase() === color.toLowerCase()) {
+            winAmount = finalBetAmount * 2;
+            balance += winAmount;
+            resultMsg = `Awesome! You bet on ${currentBet.selection} and the outcome is ${color}. You won ₹${winAmount.toFixed(2)}!`;
+            outcome = "Win";
+          } else {
+            resultMsg = `Oh no! You bet on ${currentBet.selection} but the outcome is ${color}. You lost ₹${finalBetAmount.toFixed(2)}.`;
+            outcome = "Loss";
+          }
         }
 
-        // Show result
         showResultModal(resultMsg, outcome === "Win");
-
-        // Add to user history
         addToUserHistory({
           period: period,
           bet: currentBet.selection,
@@ -967,7 +1051,6 @@
           amount: finalBetAmount.toFixed(2)
         });
 
-        // Clear bet
         currentBet = null;
         updateBalanceDisplay();
       }
@@ -986,7 +1069,6 @@
       historyTableBody.prepend(row);
     }
 
-    // ====== USER BET HISTORY ======
     function addToUserHistory(record) {
       userBetHistory.unshift(record);
       updateUserHistoryTable();
@@ -1006,7 +1088,6 @@
       });
     }
 
-    // ====== RESULT MODAL ======
     function showResultModal(message, isWin) {
       const resultHeader = document.getElementById("result-header");
       const resultContent = document.getElementById("result-content");
@@ -1017,13 +1098,11 @@
       if (isWin) {
         resultHeader.textContent = "You Won! 🎉";
         resultContainer.classList.add("win");
-        // play win sound
         winSound.currentTime = 0;
         winSound.play().catch(e => {});
       } else {
         resultHeader.textContent = "You Lost! 😔";
         resultContainer.classList.add("lose");
-        // play lose sound
         loseSound.currentTime = 0;
         loseSound.play().catch(e => {});
       }
@@ -1124,7 +1203,6 @@
     betAmountInput.addEventListener("input", updateConfirmButton);
     quantityInput.addEventListener("input", updateConfirmButton);
 
-    // Plus/Minus quantity
     document.getElementById("decrease-quantity").addEventListener("click", () => {
       let val = parseInt(quantityInput.value) || 1;
       if (val > 1) {
@@ -1138,6 +1216,15 @@
       val++;
       quantityInput.value = val;
       updateConfirmButton();
+    });
+
+    // ====== COLOR BUTTONS ======
+    const colorButtons = document.querySelectorAll(".color-button");
+    colorButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        let colorName = btn.dataset.color.charAt(0).toUpperCase() + btn.dataset.color.slice(1);
+        openBetModal(colorName, "color");
+      });
     });
 
     // ====== NUMBER BUTTONS ======
@@ -1156,12 +1243,31 @@
       });
     });
 
+    // ====== HOW TO PLAY & DETAIL BUTTONS ======
+    const howToPlayButton = document.querySelector(".how-to-play-button");
+    const detailButton = document.querySelector(".detail-button");
+    const howToPlayModal = document.getElementById("how-to-play-modal");
+    const detailModal = document.getElementById("detail-modal-modal");
+    const howToPlayClose = document.getElementById("how-to-play-close-button");
+    const detailClose = document.getElementById("detail-close-button");
+
+    howToPlayButton.addEventListener("click", () => {
+      howToPlayModal.style.display = "flex";
+    });
+    howToPlayClose.addEventListener("click", () => {
+      howToPlayModal.style.display = "none";
+    });
+
+    detailButton.addEventListener("click", () => {
+      detailModal.style.display = "flex";
+    });
+    detailClose.addEventListener("click", () => {
+      detailModal.style.display = "none";
+    });
+
     // ====== CHART ======
     function drawChart() {
-      // Clear
       chartCtx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
-
-      // If no data, do nothing
       if (resultsForChart.length === 0) return;
 
       const w = chartCanvas.width;
@@ -1171,13 +1277,11 @@
       let dataCount = resultsForChart.length;
       let xSpacing = (w - leftPadding - 20) / (dataCount - 1 || 1);
 
-      // We'll plot the "number" from 0..9 on y-axis
       chartCtx.beginPath();
       chartCtx.strokeStyle = "#0caf69";
       chartCtx.lineWidth = 2;
 
       resultsForChart.slice().reverse().forEach((item, idx) => {
-        // oldest at index 0
         let x = leftPadding + idx * xSpacing;
         let y = h - bottomPadding - (item.number * (h - bottomPadding - 20) / 9);
         if (idx === 0) {
@@ -1188,7 +1292,6 @@
       });
       chartCtx.stroke();
 
-      // Draw points
       resultsForChart.slice().reverse().forEach((item, idx) => {
         let x = leftPadding + idx * xSpacing;
         let y = h - bottomPadding - (item.number * (h - bottomPadding - 20) / 9);
@@ -1200,9 +1303,7 @@
     }
 
     // ====== INIT ======
-    updateBalanceDisplay();
     startCountdown();
-    // By default, set X2 as active
     multiplierButtons.forEach(btn => {
       if(btn.dataset.multiplier === "x2") btn.classList.add("active");
     });
