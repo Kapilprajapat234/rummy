@@ -255,7 +255,7 @@ function playAviator() {
         return;
     }
     
-    aviatorGameInterface.style.display = 'block';
+    window.open('aviater.html', '_blank');
 }
 
 document.querySelector('#aviatorGameInterface .close-game').addEventListener('click', () => {
@@ -400,8 +400,7 @@ function playMineGame() {
         return;
     }
     
-    mineGameInterface.style.display = 'block';
-    setupMineGame();
+    window.open('minegame.html', '_blank');
 }
 
 document.querySelector('#mineGameInterface .close-game').addEventListener('click', () => {
